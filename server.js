@@ -23,7 +23,8 @@ app.post('/process-payroll', async (req, res) => {
         const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
         const header = data[0];
-        const rows = data.slice(1);
+        let rows = data.slice(1);
+        const sentRows = [];
 
         const transporter = nodemailer.createTransport({
             host: process.env.SMTP_HOST,
@@ -46,7 +47,12 @@ app.post('/process-payroll', async (req, res) => {
                 let y = height - 50;
                 page.drawText('Farmer’s Choice Limited', { x: 50, y, size: 12, font: boldFont });
                 y -= 20;
-                page.drawText('28th January 2025', { x: 50, y, size: 12, font: font });
+                const today = new Date().toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                });
+                page.drawText(today, { x: 50, y, size: 12, font: font });
                 y -= 30;
                 
                 page.drawText(`Name: ${employee[0]}`, { x: 50, y, size: 12, font: font });
@@ -112,12 +118,47 @@ app.post('/process-payroll', async (req, res) => {
                     ],
                 });
 
+                sentRows.push(employee);
             } catch (error) {
                 console.error(`Failed to send email to ${employee[1]}:`, error);
             }
         }
 
-        res.status(200).json({ message: 'Emails sent successfully' });
+        // Remove sent rows from the main list
+        rows = rows.filter(row => !sentRows.includes(row));
+
+        // Update the original payroll-info.xlsx with remaining rows
+        const newData = [header, ...rows];
+        const newWorksheet = XLSX.utils.aoa_to_sheet(newData);
+        const newWorkbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, sheetName);
+        XLSX.writeFile(newWorkbook, filePath);
+
+        // Append Sent Data to a Separate "Sent Payroll Info" File
+        const sentFilePath = path.join(__dirname, 'payroll-info_sent.xlsx');
+        let sentWorkbook, sentWorksheet, sentData;
+
+        if (fs.existsSync(sentFilePath)) {
+            // Read existing file and append
+            sentWorkbook = XLSX.readFile(sentFilePath);
+            sentWorksheet = sentWorkbook.Sheets['Sent Payroll Info'];
+            sentData = XLSX.utils.sheet_to_json(sentWorksheet, { header: 1 });
+        } else {
+            // Create a new workbook
+            sentWorkbook = XLSX.utils.book_new();
+            sentData = [header];
+        }
+
+        // Append sent rows
+        sentData = sentData.concat(sentRows);
+
+        // Write back to the sent file
+        const updatedSentWorksheet = XLSX.utils.aoa_to_sheet(sentData);
+        XLSX.utils.book_append_sheet(sentWorkbook, updatedSentWorksheet, 'Sent Payroll Info');
+        XLSX.writeFile(sentWorkbook, sentFilePath);
+
+        res.status(200).json({ message: 'Emails sent successfully and saved in sent records' });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
