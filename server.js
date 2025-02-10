@@ -62,7 +62,7 @@ app.get('/process-payroll', async (req, res) => {
                 page.drawText(`Department: ${employee[3]}`, { x: 50, y, size: 12, font: font });
                 y -= 30;
 
-                page.drawText('Dear Employee,', { x: 50, y, size: 12, font: font });
+                page.drawText(`Dear ${employee[0]},`, { x: 50, y, size: 12, font: font });
                 y -= 20;
                 page.drawText(process.env.SALARY_REVIEW_HEADER + ' '+ process.env.SALARY_REVIEW_YEAR, { x: 50, y, size: 12, font: boldFont });
                 y -= 30;
