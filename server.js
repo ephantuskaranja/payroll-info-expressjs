@@ -114,6 +114,15 @@ app.get('/process-payroll', async (req, res) => {
                     y -= 20; // Move down for the next line
                 });
 
+                // Add footer
+                page.drawText(process.env.FOOTER_TEXT, {
+                    x: 50,
+                    y: 50,
+                    size: 12,
+                    font: font,
+                    color: rgb(0, 0, 0),
+                });
+
                 const pdfBytes = await pdfDoc.save();
 
                 await transporter.sendMail({
