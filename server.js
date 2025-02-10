@@ -10,7 +10,7 @@ dotenv.config();
 
 const app = express();
 
-app.post('/process-payroll', async (req, res) => {
+app.get('/process-payroll', async (req, res) => {
     try {
         const filePath = path.join(__dirname, 'payroll-info.xlsx');
         if (!fs.existsSync(filePath)) {
@@ -64,22 +64,42 @@ app.post('/process-payroll', async (req, res) => {
 
                 page.drawText('Dear Employee,', { x: 50, y, size: 12, font: font });
                 y -= 20;
-                page.drawText(process.env.SALARY_REVIEW_HEADER, { x: 50, y, size: 12, font: boldFont });
+                page.drawText(process.env.SALARY_REVIEW_HEADER + ' '+ process.env.SALARY_REVIEW_YEAR, { x: 50, y, size: 12, font: boldFont });
                 y -= 30;
 
-                page.drawText(process.env.SALARY_REVIEW_INTRO, { x: 50, y, size: 12, font: font });
-                y -= 30;
+                const intro = process.env.SALARY_REVIEW_INTRO.replace(/\\n/g, '\n');
+                const intros = intro.split('\n');
+                intros.forEach(line => {
+                    page.drawText(line, { x: 50, y, size: 12, font: font });
+                    y -= 30; // Move down for the next line
+                });
 
-                page.drawText(process.env.SALARY_REVIEW_DETAILS, { x: 50, y, size: 12, font: font });
-                y -= 30;
+                // page.drawText(process.env.SALARY_REVIEW_DETAILS, { x: 50, y, size: 12, font: font });
+                // y -= 30;
 
-                page.drawText(`Basic Salary: KShs ${employee[4]}/-`, { x: 50, y, size: 12, font: boldFont });
+                const detail = process.env.SALARY_REVIEW_DETAILS.replace(/\\n/g, '\n');
+                const details = detail.split('\n');
+                details.forEach(line => {
+                    page.drawText(line, { x: 50, y, size: 12, font: font });
+                    y -= 30; // Move down for the next line
+                });
+
+                const basicSalary = Number(employee[4]).toLocaleString('en-US', { minimumFractionDigits: 2 });
+                page.drawText(`Basic Salary: KShs ${basicSalary}/-`, { x: 50, y, size: 12, font: boldFont });
                 y -= 20;
-                page.drawText(`House / Utilities Allowance: KShs ${employee[5]}/-`, { x: 50, y, size: 12, font: boldFont });
+                const houseAllowance = Number(employee[5]).toLocaleString('en-US', { minimumFractionDigits: 2 });
+                page.drawText(`House / Utilities Allowance: KShs ${houseAllowance}/-`, { x: 50, y, size: 12, font: boldFont });
                 y -= 30;
 
-                page.drawText(process.env.SALARY_REVIEW_NOTE, { x: 50, y, size: 12, font: font });
-                y -= 30;
+                // page.drawText(process.env.SALARY_REVIEW_NOTE, { x: 50, y, size: 12, font: font });
+                // y -= 30;
+
+                const note = process.env.SALARY_REVIEW_NOTE.replace(/\\n/g, '\n');
+                const notes = note.split('\n');
+                notes.forEach(line => {
+                    page.drawText(line, { x: 50, y, size: 12, font: font });
+                    y -= 30; // Move down for the next line
+                });
 
                 page.drawText(process.env.SALARY_REVIEW_TAX, { x: 50, y, size: 12, font: font });
                 y -= 30;
@@ -87,7 +107,12 @@ app.post('/process-payroll', async (req, res) => {
                 page.drawText(process.env.SALARY_REVIEW_CONCLUSION, { x: 50, y, size: 12, font: font });
                 y -= 50;
 
-                page.drawText(process.env.SALARY_REVIEW_SIGNATURE, { x: 50, y, size: 12, font: font });
+                const signature = process.env.SALARY_REVIEW_SIGNATURE.replace(/\\n/g, '\n');
+                const signatureLines = signature.split('\n');
+                signatureLines.forEach(line => {
+                    page.drawText(line, { x: 50, y, size: 12, font: font });
+                    y -= 20; // Move down for the next line
+                });
 
                 const pdfBytes = await pdfDoc.save();
 
@@ -95,7 +120,7 @@ app.post('/process-payroll', async (req, res) => {
                     from: process.env.SMTP_USER,
                     to: employee[1],
                     subject: process.env.SALARY_REVIEW_SUBJECT,
-                    text: process.env.SALARY_REVIEW_BODY.replace('${employee[0]}', employee[0]),
+                    text: process.env.SALARY_REVIEW_BODY.replace('${employee[0]}', employee[0]) + '\n' + process.env.SALARY_REVIEW_BODY2 + ' '+ process.env.SALARY_REVIEW_YEAR,
                     attachments: [
                         {
                             filename: `salary_review_${employee[2]}.pdf`,
